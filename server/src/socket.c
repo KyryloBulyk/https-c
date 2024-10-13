@@ -28,7 +28,7 @@ int create_tcp_server(int port) {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(port);
 
-    // Socker binding to port
+    // Socket binding to port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("Error in socker binding");
         exit(EXIT_FAILURE);

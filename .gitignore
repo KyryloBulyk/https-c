@@ -1,4 +1,4 @@
 .vscode
 
-cert.pem
-key.pem
+server/cert.pem
+server/key.pem
