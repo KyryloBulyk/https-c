@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "socket.h"
 
 #define BUFFER_SIZE 1024
 
@@ -11,49 +12,27 @@ void handle_client(int client_socket);
 int main() {
     int port = 8080;
     int server_fd;
-    struct sockaddr_in server_address, client_address;
+    struct sockaddr_in client_address;
     socklen_t client_address_len = sizeof(client_address);
     
-    // Створюємо TCP-сокет
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) {
-        perror("Не вдалось створити сокет");
-        exit(EXIT_FAILURE);
-    }
+    server_fd = create_tcp_server(port);
 
-    // Налаштовуємо адресу сервера
-    server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(port);
-    server_address.sin_addr.s_addr = INADDR_ANY;
-
-    // Прив'язуємо сокет до адреси та порту
-    if (bind(server_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
-        perror("Помилка прив'язки сокета");
-        exit(EXIT_FAILURE);
-    }
-
-    // Починаємо слухати вхідні підключення
-    if (listen(server_fd, 1) < 0) {
-        perror("Помилка прослуховування");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Сервер працює і очікує підключень...\n");
+    printf("Server is working and wait for connection...\n");
 
     while (1) {
-        // Приймаємо підключення від клієнта
+        // Receive connection from client
         int client_socket = accept(server_fd, (struct sockaddr *)&client_address, &client_address_len);
         if (client_socket < 0) {
-            perror("Помилка підключення");
+            perror("Error connection");
             continue;
         }
 
-        printf("Підключився новий клієнт: %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
+        printf("New client was connected: %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
 
-        // Обробка клієнта (чат)
+        // Processing client (chat)
         handle_client(client_socket);
 
-        // Закриваємо підключення після завершення
+        // Close connection after finish
         close(client_socket);
     }
 
@@ -66,28 +45,28 @@ void handle_client(int client_socket) {
     int bytes_read;
 
     while (1) {
-        // Очищуємо буфер
+        // Clear bufer
         memset(buffer, 0, sizeof(buffer));
 
-        // Читання повідомлення від клієнта
+        // Reading message from client
         bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
         if (bytes_read < 0) {
-            perror("Помилка читання від клієнта");
+            perror("Error reading from client");
             return;
         }
 
-        // Завершуємо рядок
+        // Finish line
         buffer[bytes_read] = '\0';
-        printf("Отримано від клієнта: %s\n", buffer);
+        printf("Receive from client: %s\n", buffer);
 
-        // Якщо клієнт відправив "exit", завершити обробку
+        // If client send "exit", close processing
         if (strncmp(buffer, "exit", 4) == 0) {
-            printf("Клієнт завершив сеанс.\n");
+            printf("Client close session.\n");
             break;
         }
 
-        // Відповідь серверу
-        const char *response = "Привіт від сервера!\n";
+        // Server's answer
+        const char *response = "Hello from server!\n";
         write(client_socket, response, strlen(response));
     }
 }

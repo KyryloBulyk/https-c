@@ -10,13 +10,13 @@ int create_tcp_server(int port) {
     struct sockaddr_in address;
     int opt = 1;
 
-    // Створення TCP-сокета
+    // Creating TCP-socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("Unable to create socket");
         exit(EXIT_FAILURE);
     }
 
-    // Налаштування параметрів сокета
+    // Set parametes for socket
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
         perror("Error in setting socket options");
         exit(EXIT_FAILURE);
@@ -26,13 +26,13 @@ int create_tcp_server(int port) {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(port);
 
-    // Прив'язка сокета до порту
+    // Binding socket to port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("Error in socket binding");
         exit(EXIT_FAILURE);
     }
 
-    // Початок прослуховування на сокеті
+    // Starting listening on socket
     if (listen(server_fd, 3) < 0) {
         perror("Error in listening");
         exit(EXIT_FAILURE);

@@ -8,33 +8,32 @@
 
 void chat(int client_socket) {
     char buffer[BUFFER_SIZE];
-    int n;
 
     while (1) {
-        // Очищуємо буфер
+        // Clear buffer
         memset(buffer, 0, sizeof(buffer));
 
-        // Вводимо повідомлення від клієнта
-        printf("Введіть повідомлення: ");
+        // Input message to client
+        printf("Input message: ");
         fgets(buffer, BUFFER_SIZE, stdin);
 
-        // Відправка повідомлення на сервер
+        // Send message to server
         write(client_socket, buffer, strlen(buffer));
 
-        // Якщо введено "exit", завершимо програму
+        // If was wrotten "exit", finish the program
         if (strncmp(buffer, "exit", 4) == 0) {
-            printf("Вихід з чату...\n");
+            printf("Exit from chat...\n");
             break;
         }
 
-        // Очищуємо буфер для отримання відповіді
+        // Clear buffer for receiving the answer
         memset(buffer, 0, sizeof(buffer));
 
-        // Прийом відповіді від сервера
-        n = read(client_socket, buffer, sizeof(buffer));
+        // Receive answer from server
+        read(client_socket, buffer, sizeof(buffer));
 
-        // Відображення отриманого повідомлення
-        printf("Відповідь від сервера: %s\n", buffer);
+        // Print received message
+        printf("Answer from server: %s\n", buffer);
     }
 }
 
@@ -42,31 +41,31 @@ int main() {
     int client_socket;
     struct sockaddr_in server_address;
 
-    // Створюємо TCP-сокет
+    // Create TCP-socket
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket < 0) {
-        perror("Не вдалось створити сокет");
+        perror("Failed to create socket");
         exit(EXIT_FAILURE);
     }
 
-    // Налаштовуємо адресу сервера
+    // Set adress server
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(8080);
     server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    // Підключення до сервера
+    // Connecting to server
     if (connect(client_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
-        perror("Підключення до сервера не вдалося");
+        perror("Connection to server failed");
         close(client_socket);
         exit(EXIT_FAILURE);
     }
 
-    printf("Підключено до сервера!\n");
+    printf("Connecting to server!\n");
 
-    // Запуск чату
+    // Starting chat
     chat(client_socket);
 
-    // Закриття сокета після завершення
+    // Closing the socket after completion
     close(client_socket);
     return 0;
 }
