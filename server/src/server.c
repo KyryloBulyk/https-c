@@ -5,9 +5,11 @@
 #include <arpa/inet.h>
 #include "socket.h"
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 2048
+#define KEY "mysecretkey" //XOR key
 
 void handle_client(int client_socket);
+void xor_encrypt_ecrypt(char *data, const char *key);
 
 int main() {
     int port = 8080;
@@ -55,8 +57,15 @@ void handle_client(int client_socket) {
             return;
         }
 
+        if (bytes_read == 0) {
+            printf("Client disconnected unexpectedly.\n");
+            break;
+        }
+
         // Finish line
         buffer[bytes_read] = '\0';
+
+        xor_encrypt_ecrypt(buffer, KEY);
         printf("Receive from client: %s\n", buffer);
 
         // If client send "exit", close processing
@@ -67,6 +76,25 @@ void handle_client(int client_socket) {
 
         // Server's answer
         const char *response = "Hello from server!\n";
-        write(client_socket, response, strlen(response));
+        char encrypted_response[BUFFER_SIZE];
+        strncpy(encrypted_response, response, BUFFER_SIZE);
+
+        size_t response_len = strlen(response);
+
+        xor_encrypt_ecrypt(encrypted_response, KEY);
+
+        // Send the length of the encrypted message first
+        write(client_socket, &response_len, sizeof(response_len));
+
+        write(client_socket, encrypted_response, response_len);
+    }
+}
+
+void xor_encrypt_ecrypt(char *data, const char *key) {
+    size_t data_len = strlen(data);
+    size_t key_len = strlen(key);
+
+    for (size_t i = 0; i < data_len; i++) {
+        data[i] ^= key[i % key_len]; // Xor with key
     }
 }
