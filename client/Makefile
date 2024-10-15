@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude
-SOURCES = src/client.c 
+SOURCES = src/client.c src/rsa.c
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = build/client
 

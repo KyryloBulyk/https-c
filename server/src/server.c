@@ -3,26 +3,36 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <time.h>
+#include "rsa.h"
 #include "socket.h"
 
 #define BUFFER_SIZE 2048
 #define KEY_SIZE 16 // Size of symetrick key
 
-void handle_client(int client_socket);
-void xor_encrypt_ecrypt(char *data, const char *key, size_t length_data);
+void handle_client(int client_socket, char *sym_key);
+void xor_encrypt_decrypt(char *data, const char *key, size_t length_data);
 void generate_random_key(char *key, size_t size);
+void print_https_server_banner();
+void print_new_client_banner();
+void print_client_left_banner();
 
 int main() {
     int port = 8080;
     int server_fd;
     struct sockaddr_in client_address;
     socklen_t client_address_len = sizeof(client_address);
-    
-    server_fd = create_tcp_server(port);
-    srand(time(NULL));
 
-    printf("Server is working and wait for connection...\n");
+    // Create and inisialize RSA keys
+    RSA_PublicKey pub;
+    RSA_PrivateKey priv;
+    rsa_generate_keys(&pub, &priv);
+
+    print_https_server_banner();
+
+    // Create Server socket
+    printf("\n----------------------------\n");
+    server_fd = create_tcp_server(port);
+    printf("----------------------------\n\n");
 
     while (1) {
         // Receive connection from client
@@ -32,10 +42,33 @@ int main() {
             continue;
         }
 
-        printf("New client was connected: %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
+        print_new_client_banner();
+
+        printf("New client was connected: %s:%d\n\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
+        
+        //---------------------------
+        // Sending Public RSA key to Client
+        //---------------------------
+        write(client_socket, &pub, sizeof(pub));
+
+
+        //---------------------------
+        // Reading Symetrick key from Client
+        //---------------------------
+        int encrypted_sym_key[KEY_SIZE];
+        char decrypted_sym_key[KEY_SIZE];
+        read(client_socket, encrypted_sym_key, sizeof(encrypted_sym_key));
+
+        for (int i = 0; i < KEY_SIZE; i++) {
+            decrypted_sym_key[i] = rsa_decrypt(encrypted_sym_key[i], priv);
+        }
+
+        printf("\n----------  Symetrick key  ----------\n");
+        printf("Decrypted symetrick key from Client: %s\n", decrypted_sym_key);
+
 
         // Processing client (chat)
-        handle_client(client_socket);
+        handle_client(client_socket, decrypted_sym_key);
 
         // Close connection after finish
         close(client_socket);
@@ -45,15 +78,10 @@ int main() {
     return 0;
 }
 
-void handle_client(int client_socket) {
+void handle_client(int client_socket, char *sym_key) {
     char buffer[BUFFER_SIZE];
-    char key[KEY_SIZE];
     int bytes_read;
     size_t message_len;
-
-    generate_random_key(key, KEY_SIZE);
-    write(client_socket, key, KEY_SIZE);
-    printf("Generated and send key to client: %s\n", key);
 
     while (1) {
         // Clear bufer
@@ -73,11 +101,7 @@ void handle_client(int client_socket) {
         if (bytes_read < 0) {
             perror("Error reading from client");
             return;
-        }
-
-        printf("Length of message: %lu\n", message_len);
-
-        if (bytes_read == 0) {
+        } else if (bytes_read == 0) {
             printf("Client disconnected unexpectedly.\n");
             break;
         }
@@ -85,12 +109,14 @@ void handle_client(int client_socket) {
         // Finish line
         buffer[bytes_read] = '\0';
 
-        xor_encrypt_ecrypt(buffer, key, message_len);
-        printf("Receive from client: %s\n", buffer);
+        printf("\n----------  New Message  ----------\n");
+        printf("Encrypted from client: %s\n", buffer);
+        xor_encrypt_decrypt(buffer, sym_key, message_len);
+        printf("Decrypted from client: %s\n", buffer);
 
         // If client send "exit", close processing
         if (strncmp(buffer, "exit", 4) == 0) {
-            printf("Client close session.\n");
+            print_client_left_banner();
             break;
         }
 
@@ -101,7 +127,8 @@ void handle_client(int client_socket) {
 
         size_t response_len = strlen(response);
 
-        xor_encrypt_ecrypt(encrypted_response, key, response_len);
+        // Message encryption using XOR
+        xor_encrypt_decrypt(encrypted_response, sym_key, response_len);
 
         // Send the length of the encrypted message first
         write(client_socket, &response_len, sizeof(response_len));
@@ -110,15 +137,43 @@ void handle_client(int client_socket) {
     }
 }
 
-void xor_encrypt_ecrypt(char *data, const char *key, size_t length_data) {
+void xor_encrypt_decrypt(char *data, const char *key, size_t length_data) {
     for (size_t i = 0; i < length_data; i++) {
         data[i] ^= key[i % KEY_SIZE]; // Xor with key
     }
 }
 
-void generate_random_key(char *key, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        key[i] = 'A' + (rand() % 26);  // Random symbol from alfabet
-    }
-    key[size] = '\0';
+void print_https_server_banner() {
+    printf("\n----------------------------\n");
+    printf("  _   _ _____ _____ ____  ____    ____                           \n");
+    printf(" | | | |_   _|_   _|  _ \\/ ___|  / ___|  ___ _ ____   _____ _ __ \n");
+    printf(" | |_| | | |   | | | |_) \\___ \\  \\___ \\ / _ \\ '__\\ \\ / / _ \\ '__|\n");
+    printf(" |  _  | | |   | | |  __/ ___) |  ___) |  __/ |   \\ V /  __/ |   \n");
+    printf(" |_| |_| |_|   |_| |_|   |____/  |____/ \\___|_|    \\_/ \\___|_|   \n");
+    printf("                                                                 \n");
+    printf("----------------------------\n");
+}
+
+
+
+void print_new_client_banner() {
+    printf("\n----------------------------\n");
+    printf("  _   _                  ____ _ _            _     __  \n");
+    printf(" | \\ | | _____      __  / ___| (_) ___ _ __ | |_   \\ \\ \n");
+    printf(" |  \\| |/ _ \\ \\ /\\ / / | |   | | |/ _ \\ '_ \\| __| (_) |\n");
+    printf(" | |\\  |  __/\\ V  V /  | |___| | |  __/ | | | |_   _| |\n");
+    printf(" |_| \\_|\\___| \\_/\\_/    \\____|_|_|\\___|_| |_|\\__| (_) |\n");
+    printf("                                                   /_/ \n");
+    printf("----------------------------\n");
+}
+
+void print_client_left_banner() {
+    printf("----------------------------\n");
+    printf("   ____ _ _            _     _       __ _        __\n");
+    printf("  / ___| (_) ___ _ __ | |_  | | ___ / _| |_   _ / /\n");
+    printf(" | |   | | |/ _ \\ '_ \\| __| | |/ _ \\ |_| __| (_) | \n");
+    printf(" | |___| | |  __/ | | | |_  | |  __/  _| |_   _| | \n");
+    printf("  \\____|_|_|\\___|_| |_|\\__| |_|\\___|_|  \\__| (_) | \n");
+    printf("                                                \\_\\\n");
+    printf("----------------------------\n");
 }

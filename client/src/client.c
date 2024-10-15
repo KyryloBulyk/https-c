@@ -3,17 +3,26 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <time.h>
+#include "rsa.h"
 
 #define BUFFER_SIZE 2048
 #define KEY_SIZE 16 // Size of symetrick key
 
 void chat(int client_socket, const char *key);
-void xor_encrypt_ecrypt(char *data, const char *key, size_t length_data);
+void xor_encrypt_decrypt(char *data, const char *key, size_t length_data);
+void generate_random_key(char *key, size_t size);
+void print_https_client_banner();
 
 int main() {
     int client_socket;
     struct sockaddr_in server_address;
     char key[KEY_SIZE];
+
+    // Set base for generating
+    srand(time(NULL));
+
+    print_https_client_banner();
 
     // Create TCP-socket
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -34,11 +43,28 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf("Connecting to server!\n");
+    printf("\nConnecting to server\n");
 
-    // Receive symetrick key from server
-    read(client_socket, key, KEY_SIZE);
-    printf("Receive key from server: %s\n", key);
+
+    //-------------------------
+    // Receive RSA and send to server
+    //-------------------------
+    RSA_PublicKey rsa_pub_key;
+    read(client_socket, &rsa_pub_key, sizeof(RSA_PublicKey));
+    printf("RSA public key received from server\n");
+
+    generate_random_key(key, KEY_SIZE);
+    printf("\n----------  Generating symmetrick key  ----------\n");
+    printf("Generated symmetric key: %s\n", key);
+
+    int encrypted_sym_key[KEY_SIZE];
+    for (int i = 0; i < KEY_SIZE; i++) {
+        encrypted_sym_key[i] = rsa_encrypt(key[i], rsa_pub_key);
+    }
+
+    write(client_socket, encrypted_sym_key, sizeof(encrypted_sym_key));
+    printf("Encrypted symmetric key sent to server\n\n");
+
 
     // Starting chat
     chat(client_socket, key);
@@ -59,6 +85,7 @@ void chat(int client_socket, const char *key) {
         memset(encrypted_message, 0, sizeof(encrypted_message));
 
         // Input message to client
+        printf("\n---------- New Message ----------\n");
         printf("Input message: ");
         fgets(buffer, BUFFER_SIZE, stdin);
 
@@ -66,15 +93,13 @@ void chat(int client_socket, const char *key) {
 
         size_t message_len = strlen(buffer);
 
-        xor_encrypt_ecrypt(encrypted_message, key, strlen(encrypted_message));
+        xor_encrypt_decrypt(encrypted_message, key, strlen(encrypted_message));
 
         // Send the length of the encrypted message first
         write(client_socket, &message_len, sizeof(message_len));
 
         // Send message to server
         write(client_socket, encrypted_message, message_len);
-
-        printf("Length of message: %lu\n", message_len);
 
         // If was wrotten "exit", finish the program
         if (strncmp(buffer, "exit", 4) == 0) {
@@ -91,16 +116,36 @@ void chat(int client_socket, const char *key) {
         // Receive answer from server
         read(client_socket, buffer, encrypted_len);
 
-        xor_encrypt_ecrypt(buffer, key, encrypted_len);
+        printf("\n----------  Server's Answer  ----------\n");
+        printf("Encrypted Answer from server: %s\n", buffer);
+
+        xor_encrypt_decrypt(buffer, key, encrypted_len);
 
         // Print received message
         printf("Answer from server: %s\n", buffer);
     }
 }
 
-
-void xor_encrypt_ecrypt(char *data, const char *key, size_t length_data) {
+void xor_encrypt_decrypt(char *data, const char *key, size_t length_data) {
     for (size_t i = 0; i < length_data; i++) {
         data[i] ^= key[i % KEY_SIZE]; // Xor with key
     }
+}
+
+void generate_random_key(char *key, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        key[i] = 'A' + (rand() % 26);  // Random symbol from alfabet
+    }
+    key[size] = '\0';
+}
+
+void print_https_client_banner() {
+    printf("--------------------------------\n");
+    printf("  _   _ _____ _____ ____  ____     ____ _ _            _   \n");
+    printf(" | | | |_   _|_   _|  _ \\/ ___|   / ___| (_) ___ _ __ | |_ \n");
+    printf(" | |_| | | |   | | | |_) \\___ \\  | |   | | |/ _ \\ '_ \\| __|\n");
+    printf(" |  _  | | |   | | |  __/ ___) | | |___| | |  __/ | | | |_ \n");
+    printf(" |_| |_| |_|   |_| |_|   |____/   \\____|_|_|\\___|_| |_|\\__|\n");
+    printf("                                                           \n");
+    printf("--------------------------------\n");
 }
