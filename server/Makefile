@@ -6,6 +6,8 @@ OBJECTS = $(SOURCES:.c=.o)
 TARGET = build/https_server
 
 all: $(TARGET)
+	./$(TARGET)
+	$(MAKE) clean
 
 $(TARGET): $(OBJECTS)
 	$(CC) -o $@ $^ $(LDFLAGS)

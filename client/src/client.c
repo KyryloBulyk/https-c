@@ -5,14 +5,15 @@
 #include <arpa/inet.h>
 
 #define BUFFER_SIZE 2048
-#define KEY "mysecretkey" //XOR key
+#define KEY_SIZE 16 // Size of symetrick key
 
-void chat(int client_socket);
+void chat(int client_socket, const char *key);
 void xor_encrypt_ecrypt(char *data, const char *key, size_t length_data);
 
 int main() {
     int client_socket;
     struct sockaddr_in server_address;
+    char key[KEY_SIZE];
 
     // Create TCP-socket
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -35,15 +36,19 @@ int main() {
 
     printf("Connecting to server!\n");
 
+    // Receive symetrick key from server
+    read(client_socket, key, KEY_SIZE);
+    printf("Receive key from server: %s\n", key);
+
     // Starting chat
-    chat(client_socket);
+    chat(client_socket, key);
 
     // Closing the socket after completion
     close(client_socket);
     return 0;
 }
 
-void chat(int client_socket) {
+void chat(int client_socket, const char *key) {
     char buffer[BUFFER_SIZE];
     char encrypted_message[BUFFER_SIZE];
     size_t encrypted_len;
@@ -61,13 +66,15 @@ void chat(int client_socket) {
 
         size_t message_len = strlen(buffer);
 
-        xor_encrypt_ecrypt(encrypted_message, KEY, strlen(encrypted_message));
+        xor_encrypt_ecrypt(encrypted_message, key, strlen(encrypted_message));
 
         // Send the length of the encrypted message first
         write(client_socket, &message_len, sizeof(message_len));
 
         // Send message to server
         write(client_socket, encrypted_message, message_len);
+
+        printf("Length of message: %lu\n", message_len);
 
         // If was wrotten "exit", finish the program
         if (strncmp(buffer, "exit", 4) == 0) {
@@ -84,7 +91,7 @@ void chat(int client_socket) {
         // Receive answer from server
         read(client_socket, buffer, encrypted_len);
 
-        xor_encrypt_ecrypt(buffer, KEY, encrypted_len);
+        xor_encrypt_ecrypt(buffer, key, encrypted_len);
 
         // Print received message
         printf("Answer from server: %s\n", buffer);
@@ -93,9 +100,7 @@ void chat(int client_socket) {
 
 
 void xor_encrypt_ecrypt(char *data, const char *key, size_t length_data) {
-    size_t key_len = strlen(key);
-
     for (size_t i = 0; i < length_data; i++) {
-        data[i] ^= key[i % key_len]; // Xor with key
+        data[i] ^= key[i % KEY_SIZE]; // Xor with key
     }
 }
