@@ -9,7 +9,7 @@
 #define KEY "mysecretkey" //XOR key
 
 void handle_client(int client_socket);
-void xor_encrypt_ecrypt(char *data, const char *key);
+void xor_encrypt_ecrypt(char *data, const char *key, size_t length_data);
 
 int main() {
     int port = 8080;
@@ -45,10 +45,20 @@ int main() {
 void handle_client(int client_socket) {
     char buffer[BUFFER_SIZE];
     int bytes_read;
+    size_t message_len;
 
     while (1) {
         // Clear bufer
         memset(buffer, 0, sizeof(buffer));
+
+        // First receive the length of the encrypted message
+        bytes_read = read(client_socket, &message_len, sizeof(message_len));
+        if (bytes_read < 0) {
+            perror("Error reading from client");
+            return;
+        }
+
+        bytes_read = 0;
 
         // Reading message from client
         bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
@@ -65,7 +75,7 @@ void handle_client(int client_socket) {
         // Finish line
         buffer[bytes_read] = '\0';
 
-        xor_encrypt_ecrypt(buffer, KEY);
+        xor_encrypt_ecrypt(buffer, KEY, message_len);
         printf("Receive from client: %s\n", buffer);
 
         // If client send "exit", close processing
@@ -81,7 +91,7 @@ void handle_client(int client_socket) {
 
         size_t response_len = strlen(response);
 
-        xor_encrypt_ecrypt(encrypted_response, KEY);
+        xor_encrypt_ecrypt(encrypted_response, KEY, response_len);
 
         // Send the length of the encrypted message first
         write(client_socket, &response_len, sizeof(response_len));
@@ -90,11 +100,10 @@ void handle_client(int client_socket) {
     }
 }
 
-void xor_encrypt_ecrypt(char *data, const char *key) {
-    size_t data_len = strlen(data);
+void xor_encrypt_ecrypt(char *data, const char *key, size_t length_data) {
     size_t key_len = strlen(key);
 
-    for (size_t i = 0; i < data_len; i++) {
+    for (size_t i = 0; i < length_data; i++) {
         data[i] ^= key[i % key_len]; // Xor with key
     }
 }

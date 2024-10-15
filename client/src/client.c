@@ -59,10 +59,15 @@ void chat(int client_socket) {
 
         strncpy(encrypted_message, buffer, BUFFER_SIZE);
 
+        size_t message_len = strlen(buffer);
+
         xor_encrypt_ecrypt(encrypted_message, KEY, strlen(encrypted_message));
 
+        // Send the length of the encrypted message first
+        write(client_socket, &message_len, sizeof(message_len));
+
         // Send message to server
-        write(client_socket, encrypted_message, strlen(encrypted_message));
+        write(client_socket, encrypted_message, message_len);
 
         // If was wrotten "exit", finish the program
         if (strncmp(buffer, "exit", 4) == 0) {
