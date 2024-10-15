@@ -1,25 +1,25 @@
 #ifndef RSA_H
 #define RSA_H
 
-// Структура для відкритого ключа RSA
+// Structure for the RSA public key
 typedef struct {
-    int n;  // Модуль (n = p * q)
-    int e;  // Відкритий експонент
+    int n;  // Module (n = p * q)
+    int e;  // Open exhibitor
 } RSA_PublicKey;
 
-// Структура для закритого ключа RSA
+// Structure for the RSA private key
 typedef struct {
-    int n;  // Модуль (n = p * q)
-    int d;  // Приватний експонент
+    int n;  // Module (n = p * q)
+    int d;  // Private exhibitor
 } RSA_PrivateKey;
 
-// Генерація відкритого і закритого ключів RSA
+// Generate public and private RSA keys
 void rsa_generate_keys(RSA_PublicKey *pub, RSA_PrivateKey *priv);
 
-// Функція шифрування повідомлення за допомогою відкритого ключа RSA
+// Function of encrypting a message using the RSA public key
 int rsa_encrypt(int message, RSA_PublicKey pub);
 
-// Функція дешифрування повідомлення за допомогою закритого ключа RSA
+// The function of decrypting a message using the RSA private key
 int rsa_decrypt(int cipher, RSA_PrivateKey priv);
 
 #endif // RSA_H

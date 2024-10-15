@@ -2,14 +2,14 @@
 #include <stdlib.h>
 #include "rsa.h"
 
-// Простенький приклад генерації відкритих і закритих ключів
+// A simple example of generating public and private keys
 void rsa_generate_keys(RSA_PublicKey *pub, RSA_PrivateKey *priv) {
-    // Фіксовані значення для демонстрації (не використовувати в реальній криптографії)
-    int p = 61;  // Просте число
-    int q = 53;  // Просте число
+    // Fixed values for demonstration purposes (not to be used in real cryptography)
+    int p = 61;  // A prime number
+    int q = 53;  // A prime number
     int n = p * q;
-    int e = 17;  // Вибір публічного експонента
-    int d = 2753;  // Приватний експонент (вирахувано вручну для прикладу)
+    int e = 17;  // Choosing a public exhibitor
+    int d = 2753;  // Private exhibitor (calculated manually for example)
 
     pub->n = n;
     pub->e = e;
@@ -18,7 +18,7 @@ void rsa_generate_keys(RSA_PublicKey *pub, RSA_PrivateKey *priv) {
     priv->d = d;
 }
 
-// Функція для шифрування повідомлення
+// Function for message encryption
 int rsa_encrypt(int message, RSA_PublicKey pub) {
     int result = 1;
     for (int i = 0; i < pub.e; i++) {
@@ -27,7 +27,7 @@ int rsa_encrypt(int message, RSA_PublicKey pub) {
     return result;
 }
 
-// Функція для дешифрування повідомлення
+// Function to decrypt a message
 int rsa_decrypt(int cipher, RSA_PrivateKey priv) {
     int result = 1;
     for (int i = 0; i < priv.d; i++) {
